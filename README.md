@@ -1,5 +1,6 @@
-# ssdp-discovery
-is a simple library for SSDP discovery. I made it to connect application instances in a local network.
+# ssdp-connect
+is a simple library for connecting application instances in the local network through SSDP discovery.
+
 `Tested on Windows`
 
 ## Building
