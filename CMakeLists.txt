@@ -10,12 +10,11 @@ else()
     set(OUTPUT_DIR ${CMAKE_SOURCE_DIR}/lib/)
 endif()
 
-project(ssdp-discovery C)
-add_library(ssdp-discovery STATIC ssdp.h ssdp.c)
+project(ssdp-connect C)
+add_library(ssdp-connect STATIC ssdp.h ssdp.c)
 
 # set output directories
-set_target_properties(ssdp-discovery PROPERTIES
+set_target_properties(ssdp-connect PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIR}
     LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR}
     RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
-
