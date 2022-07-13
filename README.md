@@ -1,7 +1,7 @@
 # ssdp-connect
 is a simple library for connecting application instances in the local network through SSDP discovery.
 
-`Tested on Windows`
+`Tested on Windows (10), Linux (Manjaro)`
 
 ## Building
 You can just add `ssdp.c` to your project or makefile. If you want a static library then use cmake.

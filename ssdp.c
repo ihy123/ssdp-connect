@@ -1,6 +1,13 @@
 #include "ssdp.h"
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+#ifdef SSDP_PLATFORM_UNIX
+#include <unistd.h>
+#endif
 
 /* SSDP Addresses */
 #define SSDP_MULTICAST_IP "239.255.255.250"
@@ -39,6 +46,10 @@ static void trim_spaces(const char* string, int* start, int* end) {
 
 /* Parse line of a SSDP request to the packet struct */
 static void parse_line(const char* data, int start, int colon, int end, ssdp_packet* p) {
+#ifndef SSDP_PLATFORM_WINDOWS
+#define _strnicmp strncmp
+#endif
+
 	/* trim field name */
 	int fieldStart = start, fieldEnd = colon - 1;
 	trim_spaces(data, &fieldStart, &fieldEnd);
@@ -103,8 +114,8 @@ int ssdp_ctx_init(ssdp_ctx* ctx, unsigned long host_ipv4, const char* service_ty
 	ctx->mreq.imr_multiaddr = ssdp_multicast_addr.sin_addr;
 	ctx->mreq.imr_interface.s_addr = host_ipv4;
 
-	if (service_name != NULL) strcpy_s(ctx->service_name, sizeof(ctx->service_name), service_name);
-	if (service_type != NULL) strcpy_s(ctx->service_type, sizeof(ctx->service_type), service_type);
+	if (service_name != NULL) strncpy(ctx->service_name, service_name, sizeof(ctx->service_name) - 1);
+	if (service_type != NULL) strncpy(ctx->service_type, service_type, sizeof(ctx->service_type) - 1);
 
 	/* Init winsock */
 #if SSDP_PLATFORM_WINDOWS
@@ -163,9 +174,12 @@ int ssdp_ctx_init(ssdp_ctx* ctx, unsigned long host_ipv4, const char* service_ty
 void ssdp_ctx_release(ssdp_ctx* ctx) {
 	if (ctx->sendbuf_free && ctx->sendbuf != NULL) free(ctx->sendbuf);
 	if (ctx->recvbuf_free && ctx->recvbuf != NULL) free(ctx->recvbuf);
-	if (ctx->socket != SSDP_INVALID_SOCKET) closesocket(ctx->socket);
+	if (ctx->socket != SSDP_INVALID_SOCKET)
 #if SSDP_PLATFORM_WINDOWS
+	closesocket(ctx->socket);
 	if (ctx->winsock_initialized) WSACleanup();
+#elif SSDP_PLATFORM_UNIX
+	close(ctx->socket);
 #endif
 }
 

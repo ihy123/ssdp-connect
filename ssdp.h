@@ -11,6 +11,9 @@ typedef SOCKET ssdp_socket_t;
 #elif defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__))
 /* Any Unix (Linux, macOS, Android) */
 #define SSDP_PLATFORM_UNIX 1
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 typedef int ssdp_socket_t;
 #endif
 
