@@ -1,30 +1,20 @@
 # ssdp-connect
-is a simple library for connecting application instances in the local network through SSDP discovery.
+is a simple library to establish connection between devices in local network using SSDP discovery.
 
-`Tested on Windows (10), Linux (Manjaro)`
+`IMPORTANT:` this is not a full-featured SSDP library. You can use it only for interconnecting 
+instances of your application in the local network or in other words to find your app in the local network 
+and make a connection with it (doesn't matter TCP or UDP), but not for analyzing and responding to foreign SSDP packets. 
+There is no guarantee that information that this library will retrieve from foreign SSDP requests will be valid.
+
+`Tested on Windows (10, 8.1), Linux (Manjaro)`
+
+## How it works
+- Server creates two non-blocking UDP sockets. One for receiving SSDP multicasts, other for making connection with client. Client creates non-blocking UDP socket.
+- Client sends ssdp:discover requests. Server receives and responds to this request.
+- Client sends a message to server (may be some kind of handshake).
+- Now Client and Server are connected. Server can close SSDP socket.
+This algorithm can be changed to establish TCP connection instead of UDP.
 
 ## Building
-You can just add `ssdp.c` to your project or makefile. If you want a static library then use cmake.
+You can just add source files to your project or makefile. If you want a static library then use cmake. Examples also can be built with cmake. 
 On Windows you must link your project to WinSock library: `Ws2_32.lib`
-
-## Usage
-```c
-ssdp_ctx ctx;
-ssdp_ctx_init(&ctx, 0, "service_type_uri", "service_name_uri", 1024, 1024);
-ssdp_begin_receiving(&ctx);
-
-ssdp_packet p;
-int result = 0;
-do {
-	memset(&p, 0, sizeof(p));
-	result = ssdp_receive(&ctx, &p);
-	if (result > 0 && p.type != SSDP_PT_NONE) {
-		char ip[16] = {0};
-		inet_ntop(p.addr.sin_family, &p.addr.sin_addr, ip, sizeof(ip));
-		printf("Received a %s packet from %s:%hu:\n\tService type: %s\n",
-			ssdp_packet_type_string(p.type), ip, ntohs(p.addr.sin_port), p.service_type);
-	}
-} while (result >= 0);
-
-ssdp_ctx_release(&ctx);
-```
