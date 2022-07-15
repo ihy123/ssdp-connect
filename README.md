@@ -10,7 +10,7 @@ There is no guarantee that information that this library will retrieve from fore
 
 ## How it works
 - Server creates two non-blocking UDP sockets. One for receiving SSDP multicasts, other for making connection with client. Client creates non-blocking UDP socket.
-- Client sends ssdp:discover requests. Server receives and responds to this request.
+- Client sends ssdp:discover request. Server receives and responds to this request.
 - Client sends a message to server (may be some kind of handshake).
 - Now Client and Server are connected. Server can close SSDP socket.
 

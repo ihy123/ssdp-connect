@@ -1,5 +1,11 @@
 #include "../ssdp-connect.h"
 #include <stdio.h>
+#include <string.h>
+
+#ifdef SSDP_PLATFORM_UNIX
+#include <unistd.h>
+#include <sys/ioctl.h>
+#endif
 
 static int ssdp_server_example_callback(const char* data, int size, const struct sockaddr_in* client, void* param) {
 	if (size >= 12 && memcmp(data, "Hello world!", 12) == 0) {
@@ -12,26 +18,44 @@ static int ssdp_server_example_callback(const char* data, int size, const struct
 void ssdp_server_example() {
 #ifdef SSDP_PLATFORM_WINDOWS
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData)) {
+		printf("Failed to init WinSock2\n");
+		return;
+	}
 #endif
 
 	/* create server socket */
-	SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	ssdp_socket_t s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (s == -1) {
+		printf("Failed to create socket\n");
+		return;
+	}
+
 	/* set non-blocking */
 #ifdef SSDP_PLATFORM_WINDOWS
 	u_long nonblock = 1;
-	ioctlsocket(s, FIONBIO, &nonblock);
+	if (ioctlsocket(s, FIONBIO, &nonblock) == -1) {
 #else
 	int nonblock = 1;
-	ioctl(s, FIONBIO, &nonblock);
+	if (ioctl(s, FIONBIO, &nonblock) == -1) {
 #endif
+		printf("Failed to make socket non-blocking\n");
+		goto End;
+	}
+
+	/* set reuse addr */
+	int sockopt = 1;
+	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&sockopt, sizeof(sockopt));
 
 	/* bind server socket */
 	struct sockaddr_in server_addr;
 	server_addr.sin_family = AF_INET;
-	server_addr.sin_addr.s_addr = 0;
+	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_addr.sin_port = 0;
-	bind(s, (struct sockaddr*)&server_addr, sizeof(server_addr));
+	if (bind(s, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
+		printf("Failed to bind socket\n");
+		goto End;
+	}
 
 	/* announce server's port */
 	int namelen = sizeof(server_addr);
@@ -45,6 +69,7 @@ void ssdp_server_example() {
 	ssdp_listen(s, service_type, sizeof(service_type) - 1, service_name, user_agent, ssdp_server_example_callback, NULL);
 
 	/* cleanup */
+End:
 #ifdef SSDP_PLATFORM_WINDOWS
 	closesocket(s);
 	WSACleanup();

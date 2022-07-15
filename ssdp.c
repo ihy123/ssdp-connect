@@ -4,6 +4,10 @@
 #include <ctype.h>
 #include <string.h>
 
+#ifdef SSDP_PLATFORM_UNIX
+#include <unistd.h>
+#endif
+
 /* SSDP multicast address */
 #define SSDP_ADDRESS "239.255.255.250:1900"
 
@@ -18,6 +22,7 @@
 #if SSDP_PLATFORM_WINDOWS
 #define strncasecmp _strnicmp
 #else
+#include <sys/ioctl.h>
 #include <strings.h>
 #define closesocket close
 #endif
@@ -36,14 +41,18 @@ ssdp_socket_t ssdp_socket_init(int nonblocking) {
 	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&sockopt, sizeof(sockopt));
 #endif
 
+	/* set non-blocking */
 	if (nonblocking) {
 #ifdef SSDP_PLATFORM_WINDOWS
 		u_long nonblock = 1;
-		ioctlsocket(s, FIONBIO, &nonblock);
+		if (ioctlsocket(s, FIONBIO, &nonblock) == -1) {
 #else
 		int nonblock = 1;
-		ioctl(s, FIONBIO, &nonblock);
+		if (ioctl(s, FIONBIO, &nonblock) == -1) {
 #endif
+			closesocket(s);
+			return -1;
+		}
 	}
 
 	/* bind socket */
@@ -58,7 +67,7 @@ ssdp_socket_t ssdp_socket_init(int nonblocking) {
 
 	/* join multicast group */
 	struct ip_mreq mreq;
-	mreq.imr_multiaddr.s_addr = inet_addr(SSDP_IP);
+	inet_pton(AF_INET, SSDP_IP, &mreq.imr_multiaddr);
 	mreq.imr_interface = host.sin_addr;
 	if (setsockopt(s, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char*)&mreq, sizeof(mreq)) == -1) {
 		closesocket(s);
@@ -77,7 +86,7 @@ void ssdp_address(struct sockaddr_in* addr) {
 	assert(addr != NULL);
 	addr->sin_family = AF_INET;
 	addr->sin_port = htons(SSDP_PORT);
-	addr->sin_addr.s_addr = inet_addr(SSDP_IP);
+	inet_pton(AF_INET, SSDP_IP, &addr->sin_addr);
 }
 
 /* Adjust start and end indices to skip leading and trailing spaces */
@@ -153,23 +162,6 @@ static void parse_line(const char* data, int start, int colon, int end,
 			value_len == 15 && memcmp(value, "\"ssdp:discover\"", 15) == 0)
 			*type = SSDP_RT_DISCOVER;
 		break;
-	/*
-	case 'l':
-		if (server_addr && field_len == 8 && strncasecmp(field + 1, "ocation", 7) == 0 && value_len > 7) {
-			int skip_count = 0;
-			if (strncmp(value, "http://", 7) == 0)
-				skip_count = 7;
-			else if (strncmp(value, "https://", 8))
-				skip_count = 8;
-			if (skip_count) {
-				value += skip_count;
-				if (inet_pton(AF_INET, value, &server_addr->sin_addr) > 0)
-					if (sscanf(value, "%*[^:]%*c%hu", &server_addr->sin_port) > 0)
-						server_addr->sin_family = AF_INET;
-			}
-		}
-		break;
-	*/
 	}
 }
 

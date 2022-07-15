@@ -1,6 +1,11 @@
 #include "../ssdp-connect.h"
 #include <stdio.h>
 
+#ifdef SSDP_PLATFORM_UNIX
+#include <unistd.h>
+#include <sys/ioctl.h>
+#endif
+
 static int server_count = 0;
 static struct sockaddr_in server_list[10];
 
@@ -17,26 +22,44 @@ static int ssdp_scan_callback(const char* service_name, const char* user_agent, 
 void ssdp_client_example() {
 #ifdef SSDP_PLATFORM_WINDOWS
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData)) {
+		printf("Failed to init WinSock2\n");
+		return;
+	}
 #endif
 
 	/* create client socket */
-	SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	ssdp_socket_t s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (s == -1) {
+		printf("Failed to create socket\n");
+		return;
+	}
+
 	/* set non-blocking */
 #ifdef SSDP_PLATFORM_WINDOWS
 	u_long nonblock = 1;
-	ioctlsocket(s, FIONBIO, &nonblock);
+	if (ioctlsocket(s, FIONBIO, &nonblock) == -1) {
 #else
 	int nonblock = 1;
-	ioctl(s, FIONBIO, &nonblock);
+	if (ioctl(s, FIONBIO, &nonblock) == -1) {
 #endif
+		printf("Failed to make socket non-blocking\n");
+		goto End;
+	}
+
+	/* set reuse addr */
+	int sockopt = 1;
+	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&sockopt, sizeof(sockopt));
 
 	/* bind client socket */
 	struct sockaddr_in host;
 	host.sin_family = AF_INET;
-	host.sin_addr.s_addr = htons(INADDR_ANY);
+	host.sin_addr.s_addr = htonl(INADDR_ANY);
 	host.sin_port = 0;
-	bind(s, (struct sockaddr*)&host, sizeof(host));
+	if (bind(s, (struct sockaddr*)&host, sizeof(host)) == -1) {
+		printf("Failed to bind socket\n");
+		goto End;
+	}
 
 	/* announce client's port */
 	int namelen = sizeof(host);
@@ -62,6 +85,7 @@ void ssdp_client_example() {
 		printf("No servers found.\n");
 
 	/* cleanup */
+End:
 #ifdef SSDP_PLATFORM_WINDOWS
 	closesocket(s);
 	WSACleanup();

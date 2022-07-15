@@ -33,6 +33,9 @@ typedef SOCKET ssdp_socket_t;
 
 typedef int ssdp_socket_t;
 
+#else
+#error Current platform is not supported!
+/* But if you are really sure you can just define any complatible platform's macro (SSDP_PLATFORM_UNIX or SSDP_PLATFORM_WINDOWS) */
 #endif
 
 /* SSDP multicast channel address */
