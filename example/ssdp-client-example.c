@@ -15,18 +15,26 @@ static int ssdp_scan_callback(const char* service_name, const char* user_agent, 
 }
 
 void ssdp_client_example() {
+#ifdef SSDP_PLATFORM_WINDOWS
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
 
 	/* create client socket */
 	SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	/* set non-blocking */
+#ifdef SSDP_PLATFORM_WINDOWS
 	u_long nonblock = 1;
 	ioctlsocket(s, FIONBIO, &nonblock);
+#else
+	int nonblock = 1;
+	ioctl(s, FIONBIO, &nonblock);
+#endif
 
 	/* bind client socket */
 	struct sockaddr_in host;
 	host.sin_family = AF_INET;
-	host.sin_addr.s_addr = 0;
+	host.sin_addr.s_addr = htons(INADDR_ANY);
 	host.sin_port = 0;
 	bind(s, (struct sockaddr*)&host, sizeof(host));
 
@@ -39,7 +47,7 @@ void ssdp_client_example() {
 
 	/* find servers through SSDP */
 	const char service_type[] = "someservice:type";
-	ssdp_scan(s, service_type, sizeof(service_type) - 1, 5000, 2, ssdp_scan_callback, NULL);
+	ssdp_scan(s, service_type, sizeof(service_type) - 1, 3000, 3, ssdp_scan_callback, NULL);
 
 	if (server_count) {
 		printf("Choose server to connect: ");
@@ -54,8 +62,12 @@ void ssdp_client_example() {
 		printf("No servers found.\n");
 
 	/* cleanup */
+#ifdef SSDP_PLATFORM_WINDOWS
 	closesocket(s);
 	WSACleanup();
+#else
+	close(s);
+#endif
 }
 
 int main() {

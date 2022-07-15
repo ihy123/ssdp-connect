@@ -10,16 +10,21 @@ static int ssdp_server_example_callback(const char* data, int size, const struct
 }
 
 void ssdp_server_example() {
+#ifdef SSDP_PLATFORM_WINDOWS
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
 
 	/* create server socket */
 	SOCKET s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	/* set non-blocking */
+#ifdef SSDP_PLATFORM_WINDOWS
 	u_long nonblock = 1;
 	ioctlsocket(s, FIONBIO, &nonblock);
-
-	int sockopt = 1;
-	//setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&sockopt, sizeof(sockopt));
+#else
+	int nonblock = 1;
+	ioctl(s, FIONBIO, &nonblock);
+#endif
 
 	/* bind server socket */
 	struct sockaddr_in server_addr;
@@ -40,8 +45,12 @@ void ssdp_server_example() {
 	ssdp_listen(s, service_type, sizeof(service_type) - 1, service_name, user_agent, ssdp_server_example_callback, NULL);
 
 	/* cleanup */
+#ifdef SSDP_PLATFORM_WINDOWS
 	closesocket(s);
 	WSACleanup();
+#else
+	close(s);
+#endif
 }
 
 int main() {

@@ -1,6 +1,10 @@
 #include "ssdp-connect.h"
 #include <time.h>
 
+#ifdef SSDP_PLATFORM_WINDOWS
+#define poll WSAPoll
+#endif
+
 int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_type_len,
 	const char* service_name, const char* user_agent, pf_ssdp_listen_callback callback, void* callback_param) {
 	/* create SSDP socket */
@@ -16,24 +20,23 @@ int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_t
 	SSDP_REQUEST_TYPE req_type;
 	char req_svc_type[128];
 
-	/* fd_set for select() */
-	fd_set fdset;
-	FD_ZERO(&fdset);
-	FD_SET(s, &fdset);
-	FD_SET(server, &fdset);
+	/* pollfd for poll() */
+	struct pollfd pfd[2];
+	pfd[0].fd = s;
+	pfd[1].fd = server;
+	pfd[1].events = pfd[0].events = POLLIN;
 
 	while (result >= 0) {
 		/* wait on SSDP and server socket */
-		result = select(0, &fdset, NULL, NULL, NULL);
-		if (result == -1)
-			break;
+		result = poll(pfd, 2, -1);
+		if (result <= 0)
+			continue;
 		/* receive requests and respond */
-		if (FD_ISSET(s, &fdset)) {
+		if (pfd[0].revents & POLLIN) {
+			pfd[0].revents = 0;
 			result = recvfrom(s, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromsize);
-			if (result <= 0) {
-				FD_SET(server, &fdset);
-				continue;
-			}
+			if (result < 0)
+				break;
 			if (ssdp_parse_request(buffer, result, &req_type, req_svc_type, sizeof(req_svc_type), NULL, 0, NULL, 0) > 0 &&
 				req_type == SSDP_RT_DISCOVER && strncmp(req_svc_type, service_type, service_type_len) == 0) {
 				result = ssdp_response(service_type, service_name, user_agent, buffer, sizeof(buffer));
@@ -41,11 +44,9 @@ int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_t
 			}
 			memset(buffer, 0, sizeof(buffer));
 		}
-		else {
-			FD_SET(s, &fdset);
-		}
 		/* receive data on server socket and forward it to the callback */
-		if (FD_ISSET(server, &fdset)) {
+		if (pfd[1].revents & POLLIN) {
+			pfd[1].revents = 0;
 			result = recvfrom(server, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromsize);
 			if (result <= 0)
 				continue;
@@ -53,9 +54,6 @@ int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_t
 			if (result)
 				break;
 			memset(buffer, 0, sizeof(buffer));
-		}
-		else {
-			FD_SET(server, &fdset);
 		}
 	}
 
@@ -80,21 +78,16 @@ int ssdp_scan(ssdp_socket_t client, const char* service_type, size_t service_typ
 	SSDP_REQUEST_TYPE req_type;
 	char req_svc_type[128], req_svc_name[128], req_user_agent[128];
 
-	/* convert timeout */
-	const long timeout_sec = discover_period_msec / 1000;
-	const long timeout_usec = (discover_period_msec % 1000) * 1000;
-	struct timeval tv;
-
 	/* for periodic sending */
 	clock_t prevtime = clock();
 	clock_t curtime;
 	clock_t time = (clock_t)(discover_period_msec / 1000.0 * CLOCKS_PER_SEC);
 	const clock_t period = time;
 
-	/* fd_set for select() */
-	fd_set fdset;
-	FD_ZERO(&fdset);
-	FD_SET(client, &fdset);
+	/* pollfd for poll() */
+	struct pollfd pfd;
+	pfd.fd = client;
+	pfd.events = POLLIN;
 
 	while (result >= 0) {
 		/* send ssdp:discover every N sec */
@@ -110,10 +103,11 @@ int ssdp_scan(ssdp_socket_t client, const char* service_type, size_t service_typ
 			memset(buffer, 0, sizeof(buffer));
 		}
 		/* receive response */
-		tv.tv_sec = timeout_sec;
-		tv.tv_usec = timeout_usec;
-		select(0, &fdset, NULL, NULL, &tv);
-		if (FD_ISSET(client, &fdset)) {
+		result = poll(&pfd, 1, discover_period_msec);
+		if (result <= 0)
+			continue;
+		if (pfd.revents & POLLIN) {
+			pfd.revents = 0;
 			result = recvfrom(client, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromsize);
 			if (result <= 0)
 				continue;
@@ -125,9 +119,6 @@ int ssdp_scan(ssdp_socket_t client, const char* service_type, size_t service_typ
 					break;
 			}
 			memset(buffer, 0, sizeof(buffer));
-		}
-		else {
-			FD_SET(client, &fdset);
 		}
 	}
 
