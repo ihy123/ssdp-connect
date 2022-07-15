@@ -13,6 +13,7 @@ There is no guarantee that information that this library will retrieve from fore
 - Client sends ssdp:discover requests. Server receives and responds to this request.
 - Client sends a message to server (may be some kind of handshake).
 - Now Client and Server are connected. Server can close SSDP socket.
+
 This algorithm can be changed to establish TCP connection instead of UDP.
 
 ## Building

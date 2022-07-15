@@ -12,12 +12,24 @@ else()
     set(BIN_DIR ${CMAKE_SOURCE_DIR}/bin/)
 endif()
 
-project(ssdp-discovery C)
-add_library(ssdp-discovery STATIC ssdp.h ssdp.c)
+project(ssdp-connect C)
+add_library(ssdp-connect STATIC ssdp.h ssdp.c ssdp-connect.h ssdp-connect.c)
 
 # set output directories
-set_target_properties(ssdp-discovery PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY ${OUTPUT_DIR}
-    LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR}
-    RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
+set_target_properties(ssdp-connect PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 
+option(BUILD_EXAMPLE "Build usage example" OFF)
+if(BUILD_EXAMPLE)
+	add_executable(ssdp-server-example example/ssdp-server-example.c)
+	target_link_libraries(ssdp-server-example ssdp-connect)
+	set_target_properties(ssdp-server-example PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR})
+	
+	add_executable(ssdp-client-example example/ssdp-client-example.c)
+	target_link_libraries(ssdp-client-example ssdp-connect)
+	set_target_properties(ssdp-client-example PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${BIN_DIR})
+	
+	if (WIN32)
+		target_link_libraries(ssdp-client-example Ws2_32.lib)
+		target_link_libraries(ssdp-server-example Ws2_32.lib)
+	endif()
+endif()
