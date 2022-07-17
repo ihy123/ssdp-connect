@@ -68,13 +68,8 @@ inline static void looper_reset(struct looper* l) {
 
 #endif
 
-int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_type_len,
+int ssdp_listen(ssdp_socket_t ssdp_sock, ssdp_socket_t server, const char* service_type, size_t service_type_len,
 	const char* service_name, const char* user_agent, pf_ssdp_listen_callback callback, void* callback_param) {
-	/* create SSDP socket */
-	ssdp_socket_t s = ssdp_socket_init(1);
-	if (s == -1)
-		return -1;
-
 	/* for socket I/O */
 	int result = 0;
 	char buffer[512] = { 0 };
@@ -87,7 +82,7 @@ int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_t
 
 	/* pollfd for poll() */
 	struct pollfd pfd[2];
-	pfd[0].fd = s;
+	pfd[0].fd = ssdp_sock;
 	pfd[1].fd = server;
 	pfd[1].events = pfd[0].events = POLLIN;
 
@@ -99,7 +94,7 @@ int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_t
 		/* receive requests and respond */
 		if (pfd[0].revents & POLLIN) {
 			pfd[0].revents = 0;
-			result = recvfrom(s, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromsize);
+			result = recvfrom(ssdp_sock, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromsize);
 			if (result < 0)
 				break;
 			if (ssdp_parse_request(buffer, result, &req_type, req_svc_type, sizeof(req_svc_type), NULL, 0, NULL, 0) > 0 &&
@@ -122,8 +117,6 @@ int ssdp_listen(ssdp_socket_t server, const char* service_type, size_t service_t
 		}
 	}
 
-	/* close SSDP socket */
-	ssdp_socket_release(s);
 	return result;
 }
 

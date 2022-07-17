@@ -27,8 +27,15 @@ void ssdp_server_example() {
 	/* create server socket */
 	ssdp_socket_t s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (s == -1) {
-		printf("Failed to create socket\n");
-		return;
+		printf("Failed to create server socket\n");
+		goto End;
+	}
+
+	/* create SSDP socket */
+	ssdp_socket_t ssdp_sock = ssdp_socket_init(1);
+	if (ssdp_sock == -1) {
+		printf("Failed to create SSDP socket\n");
+		goto End;
 	}
 
 	/* set non-blocking */
@@ -39,7 +46,7 @@ void ssdp_server_example() {
 	int nonblock = 1;
 	if (ioctl(s, FIONBIO, &nonblock) == -1) {
 #endif
-		printf("Failed to make socket non-blocking\n");
+		printf("Failed to make server socket non-blocking\n");
 		goto End;
 	}
 
@@ -53,7 +60,7 @@ void ssdp_server_example() {
 	server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 	server_addr.sin_port = 0;
 	if (bind(s, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1) {
-		printf("Failed to bind socket\n");
+		printf("Failed to bind server socket\n");
 		goto End;
 	}
 
@@ -66,15 +73,16 @@ void ssdp_server_example() {
 	const char service_type[] = "someservice:type";
 	const char service_name[] = "id:123456";
 	const char user_agent[] = "Windows 10 PC";
-	ssdp_listen(s, service_type, sizeof(service_type) - 1, service_name, user_agent, ssdp_server_example_callback, NULL);
+	ssdp_listen(ssdp_sock, s, service_type, sizeof(service_type) - 1, service_name, user_agent, ssdp_server_example_callback, NULL);
 
 	/* cleanup */
 End:
+	if (ssdp_sock != -1) ssdp_socket_release(ssdp_sock);
 #ifdef SSDP_PLATFORM_WINDOWS
-	closesocket(s);
+	if (s != -1) closesocket(s);
 	WSACleanup();
 #else
-	close(s);
+	if (s != -1) close(s);
 #endif
 }
 

@@ -31,8 +31,8 @@ void ssdp_client_example() {
 	/* create client socket */
 	ssdp_socket_t s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (s == -1) {
-		printf("Failed to create socket\n");
-		return;
+		printf("Failed to create client socket\n");
+		goto End;
 	}
 
 	/* set non-blocking */
@@ -43,7 +43,7 @@ void ssdp_client_example() {
 	int nonblock = 1;
 	if (ioctl(s, FIONBIO, &nonblock) == -1) {
 #endif
-		printf("Failed to make socket non-blocking\n");
+		printf("Failed to make client socket non-blocking\n");
 		goto End;
 	}
 
@@ -57,7 +57,7 @@ void ssdp_client_example() {
 	host.sin_addr.s_addr = htonl(INADDR_ANY);
 	host.sin_port = 0;
 	if (bind(s, (struct sockaddr*)&host, sizeof(host)) == -1) {
-		printf("Failed to bind socket\n");
+		printf("Failed to bind client socket\n");
 		goto End;
 	}
 
@@ -87,10 +87,10 @@ void ssdp_client_example() {
 	/* cleanup */
 End:
 #ifdef SSDP_PLATFORM_WINDOWS
-	closesocket(s);
+	if (s != -1) closesocket(s);
 	WSACleanup();
 #else
-	close(s);
+	if (s != -1) close(s);
 #endif
 }
 
