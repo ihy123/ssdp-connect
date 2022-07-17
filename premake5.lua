@@ -5,7 +5,7 @@ project "ssdp-connect"
 	targetdir "lib/%{cfg.buildcfg}"
 	
 	-- set up files
-	files { "ssdp.h" "ssdp.c" "ssdp-connect.h" "ssdp-connect.c" }
+	files { "ssdp.h", "ssdp.c", "ssdp-connect.h", "ssdp-connect.c" }
 	
 	-- set up configurations
 	filter "configurations:Release"
