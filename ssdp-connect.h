@@ -2,6 +2,10 @@
 #include <stddef.h>
 #include "ssdp.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* return <0 on error, return 0 to continue listening, return >0 to stop listening */
 typedef int(*pf_ssdp_listen_callback)(const char* data, int size, const struct sockaddr_in* client, void* param);
 
@@ -17,3 +21,7 @@ typedef int(*pf_ssdp_scan_callback)(const char* service_name, const char* user_a
  * client socket must be non-blocking */
 int ssdp_scan(ssdp_socket_t client, const char* service_type, size_t service_type_len,
 	long discover_period_msec, int retries, pf_ssdp_scan_callback callback, void* callback_param);
+
+#ifdef __cplusplus
+}
+#endif
