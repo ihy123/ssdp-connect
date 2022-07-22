@@ -35,11 +35,7 @@ ssdp_socket_t ssdp_socket_init(int nonblocking) {
 
 	/* set reuse address */
 	int sockopt = 1;
-#ifdef SO_REUSEPORT
-	setsockopt(s, SOL_SOCKET, SO_REUSEPORT, (char*)&sockopt, sizeof(sockopt));
-#else
 	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&sockopt, sizeof(sockopt));
-#endif
 
 	/* set non-blocking */
 	if (nonblocking) {
