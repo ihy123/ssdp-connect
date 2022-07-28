@@ -1,6 +1,7 @@
 #include "../ssdp-connect.h"
 #include <stdio.h>
 #include <string.h>
+#include "socket_helper.h"
 
 #ifdef SSDP_PLATFORM_UNIX
 #include <unistd.h>
@@ -32,21 +33,19 @@ void ssdp_server_example() {
 	}
 
 	/* create SSDP socket */
-	ssdp_socket_t ssdp_sock = ssdp_socket_init(1);
+	ssdp_socket_t ssdp_sock = ssdp_socket_init();
 	if (ssdp_sock == -1) {
 		printf("Failed to create SSDP socket\n");
 		goto End;
 	}
 
 	/* set non-blocking */
-#ifdef SSDP_PLATFORM_WINDOWS
-	u_long nonblock = 1;
-	if (ioctlsocket(s, FIONBIO, &nonblock) == -1) {
-#else
-	int nonblock = 1;
-	if (ioctl(s, FIONBIO, &nonblock) == -1) {
-#endif
+	if (set_socket_blocking_mode(s, 1) == -1) {
 		printf("Failed to make server socket non-blocking\n");
+		goto End;
+	}
+	if (set_socket_blocking_mode(ssdp_sock, 1) == -1) {
+		printf("Failed to make SSDP socket non-blocking\n");
 		goto End;
 	}
 
@@ -78,11 +77,9 @@ void ssdp_server_example() {
 	/* cleanup */
 End:
 	if (ssdp_sock != -1) ssdp_socket_release(ssdp_sock);
+	ssdp_socket_release(s);
 #ifdef SSDP_PLATFORM_WINDOWS
-	if (s != -1) closesocket(s);
 	WSACleanup();
-#else
-	if (s != -1) close(s);
 #endif
 }
 

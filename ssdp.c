@@ -27,7 +27,7 @@
 #define closesocket close
 #endif
 
-ssdp_socket_t ssdp_socket_init(int nonblocking) {
+ssdp_socket_t ssdp_socket_init() {
 	/* create socket */
 	ssdp_socket_t s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (s == -1)
@@ -36,20 +36,6 @@ ssdp_socket_t ssdp_socket_init(int nonblocking) {
 	/* set reuse address */
 	int sockopt = 1;
 	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&sockopt, sizeof(sockopt));
-
-	/* set non-blocking */
-	if (nonblocking) {
-#ifdef SSDP_PLATFORM_WINDOWS
-		u_long nonblock = 1;
-		if (ioctlsocket(s, FIONBIO, &nonblock) == -1) {
-#else
-		int nonblock = 1;
-		if (ioctl(s, FIONBIO, &nonblock) == -1) {
-#endif
-			closesocket(s);
-			return -1;
-		}
-	}
 
 	/* bind socket */
 	struct sockaddr_in host;

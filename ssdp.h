@@ -57,7 +57,7 @@ extern "C" {
 
 /* <nonblocking> - set 1 to make socket non-blocking (useful when using select() or poll())
  * Returns socket id on success, -1 on error */
-ssdp_socket_t ssdp_socket_init(int nonblocking);
+ssdp_socket_t ssdp_socket_init();
 
 /* Closes ssdp socket. On Unix: close(). On Windows: closesocket() */
 int ssdp_socket_release(ssdp_socket_t ssdp_socket);

@@ -157,7 +157,7 @@ int ssdp_scan(ssdp_socket_t client, const char* service_type, size_t service_typ
 			memset(buffer, 0, sizeof(buffer));
 		}
 		/* receive response */
-		poll(&pfd, 1, discover_period_msec);
+		result = poll(&pfd, 1, discover_period_msec);
 		if (pfd.revents & POLLIN) {
 			pfd.revents = 0;
 			result = recvfrom(client, buffer, sizeof(buffer), 0, (struct sockaddr*)&from, &fromsize);

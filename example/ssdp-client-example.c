@@ -1,5 +1,6 @@
 #include "../ssdp-connect.h"
 #include <stdio.h>
+#include "socket_helper.h"
 
 #ifdef SSDP_PLATFORM_UNIX
 #include <unistd.h>
@@ -36,13 +37,7 @@ void ssdp_client_example() {
 	}
 
 	/* set non-blocking */
-#ifdef SSDP_PLATFORM_WINDOWS
-	u_long nonblock = 1;
-	if (ioctlsocket(s, FIONBIO, &nonblock) == -1) {
-#else
-	int nonblock = 1;
-	if (ioctl(s, FIONBIO, &nonblock) == -1) {
-#endif
+	if (set_socket_blocking_mode(s, 1) == -1) {
 		printf("Failed to make client socket non-blocking\n");
 		goto End;
 	}
